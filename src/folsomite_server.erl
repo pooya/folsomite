@@ -28,6 +28,7 @@
 -record(state, {flush_interval :: integer(),
                 tags           :: list(atom()),
                 node_key       :: string(),
+                graphite_prefix:: string(),
                 node_prefix    :: string(),
                 timer_ref      :: reference()}).
 
@@ -42,9 +43,15 @@ init(no_arg) ->
     FlushInterval = get_env(flush_interval),
     Tags = [folsomite|folsomite_zeta:get_tags()],
     Ref = erlang:start_timer(FlushInterval, self(), ?TIMER_MSG),
+    Prefix = get_env(graphite_prefix),
+    GraphitePrefix = case Prefix of
+        undefined -> "";
+        _ -> Prefix ++ "."
+    end,
     State = #state{flush_interval = FlushInterval,
                    tags = Tags,
                    node_key = node_key(),
+                   graphite_prefix = GraphitePrefix,
                    node_prefix = node_prefix(),
                    timer_ref = Ref},
     {ok, State}.
@@ -135,14 +142,14 @@ send_stats(State) ->
          [folsomite_zeta:host_event(Prefix, K, V, [{tags, [transient|Tags]}]) ||
           {K, V} <- Metrics]],
     zeta:sv_batch(Events),
-    Message = [format1(State#state.node_key, M, Timestamp) || M <- Metrics],
+    Message = [format1(State#state.node_key, State#state.graphite_prefix, M, Timestamp) || M <- Metrics],
     case folsomite_graphite_client_sup:get_client() of
         {ok, Socket} -> folsomite_graphite_client:send(Socket, Message);
         {error, _} = Error -> Error
     end.
 
-format1(Base, {K, V}, Timestamp) ->
-    ["folsomite.", Base, ".", space2dot(K), " ", stringify(V), " ", Timestamp, "\n"].
+format1(Base, GraphitePrefix, {K, V}, Timestamp) ->
+    [GraphitePrefix, "folsomite.", Base, ".", space2dot(K), " ", stringify(V), " ", Timestamp, "\n"].
 
 num2str(NN) -> lists:flatten(io_lib:format("~w",[NN])).
 unixtime()  -> {Meg, S, _} = os:timestamp(), Meg*1000000 + S.
