@@ -20,6 +20,7 @@
 -define(APP, folsomite).
 
 %% api
+-spec get_client() -> {'error',_} | {'ok',_}.
 get_client() ->
     case start_client(get_env(graphite_host), get_env(graphite_port)) of
         {error, {already_started, Pid}} -> {ok, Pid};
@@ -28,13 +29,16 @@ get_client() ->
     end.
 
 %% management api
+-spec start_link() -> 'ignore' | {'error',_} | {'ok',pid()}.
 start_link() -> supervisor:start_link({local, ?MODULE}, ?MODULE, no_arg).
 
 %% supervisor callback
+-spec init('no_arg') -> {'ok',{{'one_for_one',5,10},[]}}.
 init(no_arg) -> {ok, {{one_for_one, 5, 10}, []}}.
 
 
 %% internal
+-spec start_client(_,_) -> {'error',_} | {'ok','undefined' | pid()} | {'ok','undefined' | pid(),_}.
 start_client(Host, Port) ->
       supervisor:start_child(
         ?MODULE,
@@ -45,6 +49,7 @@ start_client(Host, Port) ->
          worker,
          [folsomite_graphite_client]}).
 
+-spec get_env('graphite_host' | 'graphite_port') -> any().
 get_env(Name) ->
     {ok, Value} = application:get_env(?APP, Name),
     Value.

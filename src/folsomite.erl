@@ -14,10 +14,14 @@
 -export([start/0]).
 
 %% api
+-spec start() -> ok.
+
 start() -> start(folsomite).
 
 %% internal
+-spec start(atom()) -> 'ok'.
 start(App) -> start_ok(App, application:start(App, permanent)).
+-spec start_ok(atom(),'ok' | {'error',{'already_started',atom()} | {'not_started',atom()}}) -> 'ok'.
 start_ok(_, ok) -> ok;
 start_ok(_App, {error, {already_started, _App}}) -> ok;
 start_ok(App, {error, {not_started, Dep}}) ->

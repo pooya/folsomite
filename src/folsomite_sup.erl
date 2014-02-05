@@ -16,10 +16,12 @@
 -export([init/1]).
 
 %% Management API functions
+-spec start_link() -> 'ignore' | {'error',_} | {'ok',pid()}.
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, no_arg).
 
 %% Supervisor callbacks
+-spec init('no_arg') -> {'ok',{{'one_for_all',5,3600},[{_,_,_,_,_,_},...]}}.
 init(no_arg) ->
     GraphiteClientSup = {folsomite_graphite_client_sup,
                          {folsomite_graphite_client_sup, start_link, []},

@@ -3,29 +3,37 @@
 
 -define(APP, folsomite).
 
+-spec event(_,_,_) -> any().
 event(K, V, Opts) ->
     event(node_prefix(), K, V, [{tags, get_tags()}|Opts]).
 
+-spec event([any()],_,_,_) -> any().
 event(Prefix, K, V, Opts) ->
     send_event(Prefix ++ " " ++ K, V, ok, Opts).
 
+-spec host_event(_,_,_) -> any().
 host_event(K, V, Opts) ->
     host_event(node_prefix(), K, V, [{tags, get_tags()}|Opts]).
 
+-spec host_event([any()],_,_,_) -> any().
 host_event(Prefix, K, V, Opts) ->
     send_event({hostname(), Prefix ++ " " ++ K}, V, ok, Opts).
 
+-spec send_event(nonempty_maybe_improper_list() | {string(),nonempty_maybe_improper_list()},_,'ok',_) -> any().
 send_event(Prefix, V, State, Opts) ->
     zeta:ev(Prefix, V, State, Opts).
 
+-spec hostname() -> string().
 hostname() ->
     net_adm:localhost().
 
+-spec node_prefix() -> nonempty_string().
 node_prefix() ->
     NodeList = atom_to_list(node()),
     [A, _] = string:tokens(NodeList, "@"),
     A.
 
+-spec get_tags() -> any().
 get_tags() ->
     case application:get_env(?APP, tags) of
         {ok, Value} ->

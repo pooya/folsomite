@@ -21,12 +21,15 @@
 -record(state, {tcp_socket :: inet:socket()}).
 
 %% management api
+-spec start_link(_,_) -> 'ignore' | {'error',_} | {'ok',pid()}.
 start_link(Host, Port) -> gen_server:start_link(?MODULE, [Host, Port], []).
 
 %% api
+-spec send(atom() | pid() | {atom(),_} | {'via',_,_},_) -> 'ok'.
 send(Socket, Message) -> gen_server:cast(Socket, {send, Message}).
 
 %% gen_server callbacks
+-spec init([atom() | string() | char() | {byte(),byte(),byte(),byte()} | {char(),char(),char(),char(),char(),char(),char(),char()},...]) -> {'ok',#state{tcp_socket::port()}} | {'stop',atom()}.
 init([Host, Port]) ->
     SocketOpts = [binary, {active, false}],
     case gen_tcp:connect(Host, Port, SocketOpts, 5000) of
@@ -38,10 +41,12 @@ init([Host, Port]) ->
             {stop, Reason}
     end.
 
+-spec handle_call(_,_,_) -> {'noreply',_}.
 handle_call(Call, _, State) ->
     unexpected(call, Call),
     {noreply, State}.
 
+-spec handle_cast(_,_) -> {'noreply',_} | {'stop',{'shutdown','connection_closed'},#state{tcp_socket::port()}}.
 handle_cast({send, Message}, #state{tcp_socket = TCPSocket} = State) ->
     case gen_tcp:send(TCPSocket, Message) of
         ok ->
@@ -54,19 +59,23 @@ handle_cast(Cast, State) ->
     unexpected(cast, Cast),
     {noreply, State}.
 
+-spec handle_info(_,_) -> {'noreply',_}.
 handle_info(Info, State) ->
     unexpected(info, Info),
     {noreply, State}.
 
+-spec terminate(_,#state{tcp_socket::'undefined' | port()}) -> 'ok'.
 terminate(_, #state{tcp_socket = TCPSocket}) ->
     case TCPSocket of
         undefined -> ok;
         TCPSocket1 -> gen_tcp:close(TCPSocket1)
     end.
 
+-spec code_change(_,_,_) -> {'ok',_}.
 code_change(_, State, _) -> {ok, State}.
 
 
 %% internal
+-spec unexpected('call' | 'cast' | 'info',_) -> 'ok'.
 unexpected(Type, Message) ->
     error_logger:info_msg(" unexpected ~p ~p~n", [Type, Message]).

@@ -34,10 +34,12 @@
 
 
 %% management api
+-spec start_link() -> 'ignore' | {'error',_} | {'ok',pid()}.
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, no_arg, []).
 
 %% gen_server callbacks
+-spec init('no_arg') -> {'ok',#state{flush_interval::non_neg_integer(),tags::[atom(),...],node_key::string(),graphite_prefix::string(),node_prefix::nonempty_string(),timer_ref::reference()}}.
 init(no_arg) ->
     process_flag(trap_exit, true),
     FlushInterval = get_env(flush_interval),
@@ -56,14 +58,17 @@ init(no_arg) ->
                    timer_ref = Ref},
     {ok, State}.
 
+-spec handle_call(_,_,_) -> {'noreply',_}.
 handle_call(Call, _, State) ->
     unexpected(call, Call),
     {noreply, State}.
 
+-spec handle_cast(_,_) -> {'noreply',_}.
 handle_cast(Cast, State) ->
     unexpected(cast, Cast),
     {noreply, State}.
 
+-spec handle_info(_,_) -> {'noreply',_} | {'stop',{'exit',{_,_,_}},_}.
 handle_info({timeout, _R, ?TIMER_MSG},
             #state{timer_ref = _R, flush_interval = FlushInterval} = State) ->
     Ref = erlang:start_timer(FlushInterval, self(), ?TIMER_MSG),
@@ -76,6 +81,7 @@ handle_info(Info, State) ->
     unexpected(info, Info),
     {noreply, State}.
 
+-spec terminate(_,_) -> any().
 terminate(shutdown, #state{timer_ref = Ref} = State) ->
     erlang:cancel_timer(Ref),
     Prefix = State#state.node_prefix,
@@ -85,10 +91,12 @@ terminate(shutdown, #state{timer_ref = Ref} = State) ->
 
 terminate(_, _) -> ok.
 
+-spec code_change(_,_,_) -> {'ok',_}.
 code_change(_, State, _) -> {ok, State}.
 
 
 %% internal
+-spec get_stats() -> [any()].
 get_stats() ->
     Memory = expand0(folsom_vm_metrics:get_memory(), [memory, vm]),
     Stats = expand0(folsom_vm_metrics:get_statistics(), [vm]),
@@ -101,6 +109,7 @@ get_stats() ->
     Metric :: {K::string(), V::string()},
     Name :: term(),
     Opts :: [proplists:property()].
+
 expand_metric({Name, Opts}) ->
     case proplists:get_value(type, Opts) of
             undefined -> [];
@@ -120,8 +129,10 @@ expand_metric({Name, Opts}) ->
 expand_metric(_) ->
     [].
 
+-spec expand0(_,[any(),...]) -> [any()].
 expand0(M, NamePrefix) -> lists:flatten(expand(M, NamePrefix)).
 
+-spec expand(_,[any(),...]) -> [[[any()] | {_,_}] | {[any()],_}].
 expand({K, X}, NamePrefix) ->
     expand(X, [K | NamePrefix]);
 expand([_|_] = Xs, NamePrefix) ->
@@ -130,6 +141,7 @@ expand(X, NamePrefix) ->
     K = string:join(lists:map(fun stringify/1, lists:reverse(NamePrefix)), " "),
     [{K, X}].
 
+-spec send_stats(#state{flush_interval::'undefined' | integer(),tags::'undefined' | [atom()],node_key::'undefined' | string(),graphite_prefix::'undefined' | string(),node_prefix::string(),timer_ref::'undefined' | reference()}) -> 'ok' | {'error',_}.
 send_stats(State) ->
     Metrics = get_stats(),
     Timestamp = num2str(unixtime()),
@@ -148,24 +160,30 @@ send_stats(State) ->
         {error, _} = Error -> Error
     end.
 
+-spec format1('undefined' | string(),'undefined' | string(),{string(),atom() | binary() | maybe_improper_list() | number() | tuple()},[any()]) -> ['undefined' | maybe_improper_list(),...].
 format1(Base, GraphitePrefix, {K, V}, Timestamp) ->
     [GraphitePrefix, "folsomite.", Base, ".", space2dot(K), " ", stringify(V), " ", Timestamp, "\n"].
 
+-spec num2str(non_neg_integer()) -> [any()].
 num2str(NN) -> lists:flatten(io_lib:format("~w",[NN])).
+-spec unixtime() -> non_neg_integer().
 unixtime()  -> {Meg, S, _} = os:timestamp(), Meg*1000000 + S.
 
 
+-spec node_prefix() -> nonempty_string().
 node_prefix() ->
     NodeList = atom_to_list(node()),
     [A, _] = string:tokens(NodeList, "@"),
     A.
 
+-spec node_key() -> binary() | maybe_improper_list(binary() | maybe_improper_list(any(),binary() | []) | char(),binary() | []).
 node_key() ->
     NodeList = atom_to_list(node()),
     Opts = [global, {return, list}],
     re:replace(NodeList, "[\@\.]", "_", Opts).
 
 
+-spec stringify(atom() | binary() | maybe_improper_list() | number() | tuple()) -> maybe_improper_list().
 stringify(X) when is_list(X) -> X;
 stringify(X) when is_atom(X) -> atom_to_list(X);
 stringify(X) when is_integer(X) -> integer_to_list(X);
@@ -174,11 +192,14 @@ stringify(X) when is_binary(X) -> binary_to_list(X);
 stringify(X) when is_tuple(X) ->
     string:join([stringify(A) || A <- tuple_to_list(X)], " ").
 
+-spec space2dot(string()) -> string().
 space2dot(X) -> string:join(string:tokens(X, " "), ".").
 
+-spec get_env('flush_interval' | 'graphite_prefix') -> any().
 get_env(Name) ->
     get_env(Name, undefined).
 
+-spec get_env('flush_interval' | 'graphite_prefix','undefined') -> any().
 get_env(Name, Default) ->
     case application:get_env(?APP, Name) of
         {ok, Value} ->
@@ -187,5 +208,6 @@ get_env(Name, Default) ->
             Default
     end.
 
+-spec unexpected('call' | 'cast' | 'info',_) -> 'ok'.
 unexpected(Type, Message) ->
     error_logger:info_msg(" unexpected ~p ~p~n", [Type, Message]).
