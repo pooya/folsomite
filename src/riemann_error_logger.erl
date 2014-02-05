@@ -85,10 +85,6 @@ node_prefix() ->
     A.
 
 -spec send_stats(#state{node_prefix::string()},string()) -> any().
-send_stats(State, Data)->
-    FmtData = string:substr(Data, 1, 1000),
-    Hostname = net_adm:localhost(),
-    Prefix = State#state.node_prefix ++ " ",
-    zeta:cv({Hostname, Prefix ++ "erlang crash"}, 1, crash,
-            [{tags,["transient", "erlang"]},{description, FmtData}]).
+send_stats(_State, _Data)->
+    ok.
 

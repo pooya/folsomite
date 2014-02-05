@@ -20,8 +20,8 @@ host_event(Prefix, K, V, Opts) ->
     send_event({hostname(), Prefix ++ " " ++ K}, V, ok, Opts).
 
 -spec send_event(nonempty_maybe_improper_list() | {string(),nonempty_maybe_improper_list()},_,'ok',_) -> any().
-send_event(Prefix, V, State, Opts) ->
-    zeta:ev(Prefix, V, State, Opts).
+send_event(_Prefix, _V, _State, _Opts) ->
+    ok.
 
 -spec hostname() -> string().
 hostname() ->
