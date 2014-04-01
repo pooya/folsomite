@@ -46,5 +46,9 @@ start_client(Host, Port) ->
          [folsomite_graphite_client]}).
 
 get_env(Name) ->
-    {ok, Value} = application:get_env(?APP, Name),
-    Value.
+    case os:getenv(string:to_upper(atom_to_list(Name))) of
+        false ->
+            {ok, Value} = application:get_env(?APP, Name),
+            Value;
+        Value -> Value
+    end.
