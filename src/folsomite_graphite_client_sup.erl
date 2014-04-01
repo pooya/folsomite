@@ -51,5 +51,9 @@ start_client(Host, Port) ->
 
 -spec get_env('graphite_host' | 'graphite_port') -> any().
 get_env(Name) ->
-    {ok, Value} = application:get_env(?APP, Name),
-    Value.
+    case os:getenv(string:to_upper(atom_to_list(Name))) of
+        false ->
+            {ok, Value} = application:get_env(?APP, Name),
+            Value;
+        Value -> Value
+    end.
